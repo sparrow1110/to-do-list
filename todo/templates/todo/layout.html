@@ -5,16 +5,43 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-   <title>{{ title if title else '- Базовый шаблон' }} </title>
+    <title>{{ title if title else '- Базовый шаблон' }} </title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
     <script src="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.js"></script>
 </head>
 <body>
-
-{% block content %}
-
-{% endblock content %}
-
+    <div class="custom-header">
+        <div class="custom-container">
+            <a href="{{ url_for('home') }}" class="logo-link">
+                <img src="{{ url_for('static', filename='img/logo3.webp') }}"
+                alt="Менеджер задач" class="logo-img">
+            </a>
+            <div class="right-links">
+                {% if current_user.is_authenticated %}
+                <span class="username">{{ current_user.username }}</span>
+                <form action="{{ url_for('logout') }}" method="POST" class="logout-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="ui basic button logout-button">
+                    <i class="sign-out icon"></i> Выйти
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="ui container">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="ui message">
+            {% for message in messages %}
+            <p>{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}
+        {% endblock content %}
+    </div>
 </body>
 </html>

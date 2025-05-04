@@ -1,31 +1,42 @@
 {% extends 'todo/layout.html' %}
 
 {% block content %}
-
 <div style="margin-top: 50px;" class="ui container">
-    <h1 class="ui center aligned header">Менеджер задач</h1>
+    <h1 class="ui center aligned header">Ваши задачи</h1>
 
-    <form class="ui form" action="/add" method="post">
+    <form class="ui form" action="{{ url_for('add') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
             <label>Новая задача</label>
-            <input type="text" name="title" placeholder="Введите название задачи"><br>
+            <input type="text" name="title" placeholder="Введите название задачи" >
         </div>
         <button class="ui teal basic button" type="submit">Добавить</button>
     </form>
 
-{% for todo in todo_list %}
-<div class="ui segment">
-    <p class="ui big header">{{ todo.title }}</p>
+    {% for todo in todo_list %}
+    <div class="ui segment">
+        <p class="ui big header">{{ todo.title }}</p>
 
-    {% if todo.is_complete == False %}
-    <span class="ui gray label">Не завершено</span>
-    <a class="ui primary basic button" href="/update/{{ todo.id }}">Закрыть</a>
-    {% else %}
-    <span class="ui green label">Завершено</span>
-    <a class="ui blue button" href="/update/{{ todo.id }}">Открыть</a>
-    {% endif %}
-    <a class="ui negative basic button" href="/delete/{{ todo.id }}">Удалить</a>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+            {% if todo.is_complete %}
+                <span class="ui green label">Завершено</span>
+            {% else %}
+                <span class="ui gray label">Не завершено</span>
+            {% endif %}
+
+            <form action="{{ url_for('update', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="ui {% if todo.is_complete %}blue{% else %}primary basic{% endif %} button">
+                    {% if todo.is_complete %}Открыть{% else %}Закрыть{% endif %}
+                </button>
+            </form>
+
+            <form action="{{ url_for('delete', todo_id=todo.id) }}" method="POST" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="ui negative basic button">Удалить</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}
-</div>
-{% endblock content %}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'todo/layout.html' %}
+
+{% block content %}
+<div style="margin-top: 50px;" class="ui container">
+    <h1 class="ui center aligned header">Регистрация</h1>
+    <form class="ui form" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="field">
+            {{ form.username.label }}
+            {{ form.username(size=32) }}
+            {% for error in form.username.errors %}
+            <div class="ui red message">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="field">
+            {{ form.email.label }}
+            {{ form.email(size=32) }}
+            {% for error in form.email.errors %}
+            <div class="ui red message">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="field">
+            {{ form.password.label }}
+            {{ form.password(size=32) }}
+            {% for error in form.password.errors %}
+            <div class="ui red message">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="field">
+            {{ form.password2.label }}
+            {{ form.password2(size=32) }}
+            {% for error in form.password2.errors %}
+            <div class="ui red message">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <button class="ui teal basic button" type="submit">{{ form.submit.label }}</button>
+    </form>
+    <p>Уже зарегистрированы? <a href="{{ url_for('login') }}">Войдите</a></p>
+</div>
+{% endblock %}
