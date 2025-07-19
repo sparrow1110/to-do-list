@@ -18,7 +18,18 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost',
+    '.ngrok-free.app',  # Разрешает все поддомены ngrok
+]
+INTERNAL_IPS = ["127.0.0.1"]
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.ngrok-free.app',
+]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -30,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "todo.apps.TodoConfig",
+    "users.apps.UsersConfig"
 ]
 
 MIDDLEWARE = [
@@ -47,7 +60,7 @@ ROOT_URLCONF = "todoproject.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / 'templates',],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -117,3 +130,11 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Настройки для медиа-файлов
+MEDIA_URL = '/media/'  # URL-префикс для медиа-файлов
+MEDIA_ROOT = BASE_DIR / 'media'  # Папка для хранения файлов
+
+LOGIN_REDIRECT_URL = 'home'
+LOGOUT_REDIRECT_URL = 'users:login'
+LOGIN_URL = 'users:login'
