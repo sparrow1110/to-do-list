@@ -1,0 +1,76 @@
+/*  Анимация при наведении на задачи */
+.ui.segment:hover {
+    transform: translateY(-2px);  /* Легкий подъем при наведении */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);  /* Тень для эффекта "поднятия" */
+    transition: all 0.2s ease;  /* Плавный переход */
+}
+
+/*  Стиль для активных кнопок (например, при нажатии) */
+.ui.button:active {
+    transform: scale(0.98);  /* Легкое уменьшение при клике */
+}
+
+.custom-header {
+    background-color: #f8f9fa;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    margin-bottom: 1em;
+    border-bottom: 1px solid #e9ecef;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.custom-container {
+    width: 90%;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-link {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 1em !important;
+    background: none !important;
+}
+
+.logo-img {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+}
+
+.right-links {
+    display: flex;
+    gap: 1em;
+    height: 100%;
+    align-items: center;
+}
+
+.custom-header a {
+    color: rgba(0,0,0,.87);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.right-links a {
+    padding: 0 1em;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.right-links a:hover {
+    background-color: rgba(0,0,0,.05);
+}
+
+.username {
+    font-weight: 700 !important;
+}

@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="margin-top: 50px;" class="ui container">
+    <h1 class="ui center aligned header">Ваши задачи</h1>
+
+    <!-- Вывод сообщений -->
+    {% if messages %}
+            {% for message in messages %}
+        <div class="ui {% if message.tags %}{{ message.tags }}{% endif %} message">
+            <p>{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form class="ui form" action="{% url 'add' %}" method="post" novalidate>
+    {% csrf_token %}
+    <div class="form-error">{{ form.non_field_errors }}</div>
+    {% for field in form %}
+    <div class="field {% if field.errors %}error{% endif %}">
+        <label for="{{ field.id_for_label }}">Название задачи</label>
+        {{ field }}
+        {% if field.errors %}
+        <div class="ui red message">
+            {% for error in field.errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    <button class="ui teal basic button" type="submit">Добавить</button>
+</form>
+
+    {% for todo in todo_list %}
+<div class="ui segment">
+    <p class="ui big header">{{ todo.name }}</p>
+
+    <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <span class="ui {% if todo.is_completed == 0 %}gray{% elif todo.is_completed == 1 %}yellow{% else %}green{% endif %} label">
+            {{ todo.get_is_completed_display }}
+        </span>
+
+        {% if todo.is_completed == 0 %}
+            <!-- Не начато -->
+            <form action="{% url 'update' todo.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="change" value="+1">
+                <button type="submit" class="ui green basic button">Начать</button>
+            </form>
+        {% elif todo.is_completed == 1 %}
+            <!-- В процессе -->
+            <form action="{% url 'update' todo.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="change" value="-1">
+                <button type="submit" class="ui orange basic button">Отменить</button>
+            </form>
+            <form action="{% url 'update' todo.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="change" value="+1">
+                <button type="submit" class="ui green basic button">Завершить</button>
+            </form>
+        {% else %}
+            <!-- Завершено -->
+            <form action="{% url 'update' todo.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="change" value="-1">
+                <button type="submit" class="ui orange basic button">Вернуть</button>
+            </form>
+        {% endif %}
+
+        <form action="{% url 'delete' todo.id %}" method="POST" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="ui negative basic button">Удалить</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<script>
+    // Закрытие сообщений по клику
+    $('.message .close').on('click', function() {
+        $(this).closest('.message').transition('fade');
+    });
+</script>
+{% endblock %}
