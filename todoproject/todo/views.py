@@ -1,9 +1,11 @@
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import FormView, ListView
+from django.template.loader import render_to_string
+from django.middleware.csrf import get_token
 
 from .models import Task
 from .forms import TaskForm
@@ -38,17 +40,34 @@ class AddTaskView(LoginRequiredMixin, FormView):
         return context
 
     def form_valid(self, form):
-        w = form.save(commit=False)
-        w.user = self.request.user
-        w.save()
-        messages.success(self.request, "Задача успешно добавлена!")
+        task = form.save(commit=False)
+        task.user = self.request.user
+        task.save()
+        if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            task_html = render_to_string('todo/task_item.html', {'todo': task}, request=self.request)
+            return JsonResponse({
+                'success': True,
+                'message': 'Задача успешно добавлена!',
+                'task_html': task_html,
+                'csrf_token': get_token(self.request)  # Возвращаем новый CSRF-токен
+            })
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        if self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': 'Ошибка: ' + str(form.errors.as_text()),
+                'csrf_token': get_token(self.request)  # Возвращаем новый CSRF-токен
+            })
+        return super().form_invalid(form)
 
     def get(self, request, *args, **kwargs):
         return redirect('home')
 
 
 class UpdateTask(LoginRequiredMixin, View):
+
     def get(self, request, *args, **kwargs):
         return redirect('home')
 
@@ -57,18 +76,32 @@ class UpdateTask(LoginRequiredMixin, View):
         change = int(request.POST.get('change', 0))
         task.is_completed = task.is_completed + change
         task.save()
-        messages.success(request, "Статус задачи изменен")
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            task_html = render_to_string('todo/task_item.html', {'todo': task}, request=self.request)
+            return JsonResponse({
+                'success': True,
+                'message': 'Статус задачи изменен!',
+                'task_html': task_html,
+                'csrf_token': get_token(self.request)  # Возвращаем новый CSRF-токен
+            })
         return redirect('home')
 
 
 class DeleteTask(LoginRequiredMixin, View):
+
     def get(self, request, *args, **kwargs):
         return redirect('home')
 
     def post(self, request, task_id):
-        t = Task.objects.filter(pk=task_id, user_id=self.request.user.id).delete()
-        if t:
-            messages.success(request, "Задача успешно удалена!")
+        task = Task.objects.filter(pk=task_id, user_id=self.request.user.id)
+        if task.exists():
+            task.delete()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Задача успешно удалена!',
+                    'csrf_token': get_token(self.request)  # Возвращаем новый CSRF-токен
+                })
         return redirect('home')
 
 
