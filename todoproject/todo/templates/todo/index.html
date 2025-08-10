@@ -3,209 +3,186 @@
 {% block content %}
 <div style="margin-top: 50px;" class="ui container">
     <h1 class="ui center aligned header">Ваши задачи</h1>
+    <div id="messages"></div>
 
-    <form class="ui form" id="add-task-form" action="{% url 'add' %}" method="post" novalidate onsubmit="return false;">
+    <form class="ui form" id="add-task-form" onsubmit="return false;" novalidate>
         {% csrf_token %}
-        <div class="form-error">{{ form.non_field_errors }}</div>
-        {% for field in form %}
-        <div class="field {% if field.errors %}error{% endif %}">
-            <label for="{{ field.id_for_label }}">Название задачи</label>
-            {{ field }}
-            {% if field.errors %}
-            <div class="ui red message">
-                {% for error in field.errors %}
-                    {{ error }}
-                {% endfor %}
-            </div>
-            {% endif %}
+        <div class="field">
+            <label for="task-name">Название задачи</label>
+            <input type="text" id="task-name" name="name" placeholder="Введите название задачи" required>
         </div>
-        {% endfor %}
         <button class="ui teal basic button" type="submit">Добавить</button>
     </form>
 
     <div id="task-list" style="margin-top: 30px;">
-        {% for todo in todo_list %}
-        <div class="ui segment" data-task-id="{{ todo.id }}">
-            <p class="ui big header">{{ todo.name }}</p>
-
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
-                <span class="ui {% if todo.is_completed == 0 %}gray{% elif todo.is_completed == 1 %}yellow{% else %}green{% endif %} label">
-                    {{ todo.get_is_completed_display }}
-                </span>
-
-                {% if todo.is_completed == 0 %}
-                    <!-- Не начато -->
-                    <form class="update-task-form" data-task-id="{{ todo.id }}" action="{% url 'update' todo.id %}" method="POST" onsubmit="return false;">
-                        {% csrf_token %}
-                        <input type="hidden" name="change" value="+1">
-                        <button type="submit" class="ui green basic button">Начать</button>
-                    </form>
-                {% elif todo.is_completed == 1 %}
-                    <!-- В процессе -->
-                    <form class="update-task-form" data-task-id="{{ todo.id }}" action="{% url 'update' todo.id %}" method="POST" onsubmit="return false;">
-                        {% csrf_token %}
-                        <input type="hidden" name="change" value="-1">
-                        <button type="submit" class="ui orange basic button">Отменить</button>
-                    </form>
-                    <form class="update-task-form" data-task-id="{{ todo.id }}" action="{% url 'update' todo.id %}" method="POST" onsubmit="return false;">
-                        {% csrf_token %}
-                        <input type="hidden" name="change" value="+1">
-                        <button type="submit" class="ui green basic button">Завершить</button>
-                    </form>
-                {% else %}
-                    <!-- Завершено -->
-                    <form class="update-task-form" data-task-id="{{ todo.id }}" action="{% url 'update' todo.id %}" method="POST" onsubmit="return false;">
-                        {% csrf_token %}
-                        <input type="hidden" name="change" value="-1">
-                        <button type="submit" class="ui orange basic button">Вернуть</button>
-                    </form>
-                {% endif %}
-
-                <form class="delete-task-form" data-task-id="{{ todo.id }}" action="{% url 'delete' todo.id %}" method="POST" onsubmit="return false;">
-                    {% csrf_token %}
-                    <button type="submit" class="ui negative basic button">Удалить</button>
-                </form>
-            </div>
-        </div>
-        {% endfor %}
+        <!-- Задачи будут загружаться через API -->
     </div>
 </div>
 
 <script>
-    // Вспомогательная функция для сериализации формы в FormData
-    function serializeForm(form) {
-        const formData = new FormData(form);
-        return formData;
-    }
+    // Глобальная переменная для хранения CSRF токена
+    let csrfToken = '';
 
     // Вспомогательная функция для отправки Fetch-запроса
-    async function sendRequest(url, formData) {
+    async function sendRequest(url, method, data = null) {
+        const headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        };
+
         try {
             const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
+                method: method,
+                headers: headers,
+                body: data
             });
+
+            const responseData = await response.json();
+
             if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+                return { ...responseData, success: false };
             }
-            return await response.json();
+
+            return { ...responseData, success: true };
         } catch (error) {
             console.error('Ошибка Fetch:', error);
-            return { success: false, message: 'Произошла ошибка при выполнении запроса' };
+            return {
+                success: false,
+                message: 'Произошла ошибка при соединении с сервером'
+            };
         }
     }
 
-    // Добавление задачи
-    document.getElementById('add-task-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const form = this;
+    // Функция для рендеринга статуса задачи
+    function renderStatusLabel(status) {
+        const statusText = {
+            0: 'Не начато',
+            1: 'В процессе',
+            2: 'Завершено'
+        };
+        const statusClass = {
+            0: 'gray',
+            1: 'yellow',
+            2: 'green'
+        };
+        return `<span class="ui ${statusClass[status]} label">${statusText[status]}</span>`;
+    }
 
-        // Валидация на клиенте
-        const name = form.querySelector('input[name="name"]').value.trim();
-        if (!name) {
-            document.getElementById('messages').innerHTML =
-                '<div class="ui error message"><p>Название задачи не может быть пустым</p></div>';
-            setTimeout(() => {
-                document.getElementById('messages').innerHTML = '';
-            }, 5000);
-            return;
+    // Функция для рендеринга кнопок управления задачей
+    function renderTaskButtons(taskId, status) {
+        let buttons = '';
+
+        if (status === 0) {
+            buttons = `<button type="button" class="ui green basic button" onclick="updateTaskStatus(${taskId}, 1)">Начать</button>`;
+        } else if (status === 1) {
+            buttons = `
+                <button type="button" class="ui orange basic button" onclick="updateTaskStatus(${taskId}, 0)">Отменить</button>
+                <button type="button" class="ui green basic button" onclick="updateTaskStatus(${taskId}, 2)">Завершить</button>
+            `;
+        } else {
+            buttons = `<button type="button" class="ui orange basic button" onclick="updateTaskStatus(${taskId}, 1)">Вернуть</button>`;
         }
 
-        const formData = serializeForm(form);
-        const response = await sendRequest("{% url 'add' %}", formData);
+        buttons += `<button type="button" class="ui negative basic button" onclick="deleteTask(${taskId})">Удалить</button>`;
+        return buttons;
+    }
+
+    // Функция для рендеринга задачи
+    function renderTask(task) {
+        return `
+        <div class="ui segment" data-task-id="${task.id}">
+            <p class="ui big header">${task.name}</p>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                ${renderStatusLabel(task.is_completed)}
+                ${renderTaskButtons(task.id, task.is_completed)}
+            </div>
+        </div>
+        `;
+    }
+
+    // Функция для загрузки задач
+    async function loadTasks() {
+        const response = await sendRequest('/api/v1/tasks/', 'GET');
+        if (response.success) {
+            // Сохраняем CSRF токен при первой загрузке
+            if (response.csrf_token) {
+                csrfToken = response.csrf_token;
+            }
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+            response.tasks.forEach(task => {
+                taskList.insertAdjacentHTML('beforeend', renderTask(task));
+            });
+        } else {
+            showMessage(response.message || 'Не удалось загрузить задачи', 'error');
+        }
+    }
+
+    // Функция для отображения сообщений
+    function showMessage(message, type = 'success') {
+        const messagesDiv = document.getElementById('messages');
+        messagesDiv.innerHTML = `<div class="ui ${type} message"><p>${message}</p></div>`;
+        setTimeout(() => {
+            messagesDiv.innerHTML = '';
+        }, 5000);
+    }
+
+    // Функция для добавления задачи
+    async function addTask(name) {
+        const data = JSON.stringify({ name: name });
+        const response = await sendRequest('/api/v1/tasks/', 'POST', data);
 
         if (response.success) {
-            document.getElementById('task-list').insertAdjacentHTML('afterbegin', response.task_html);
-            document.getElementById('messages').innerHTML =
-                `<div class="ui success message"><p>${response.message}</p></div>`;
-            form.reset();
-            // Обновляем CSRF-токен во всех формах внутри #task-list
-            document.querySelectorAll('#task-list input[name="csrfmiddlewaretoken"]').forEach(input => {
-                input.value = response.csrf_token;
-            });
-            // Автоматически убрать AJAX-сообщение через 5 секунды
-            setTimeout(() => {
-                document.getElementById('messages').innerHTML = '';
-            }, 5000);
+            const taskList = document.getElementById('task-list');
+            taskList.insertAdjacentHTML('afterbegin', renderTask(response.data));
+            showMessage(response.message);
+            document.getElementById('add-task-form').reset();
         } else {
-            document.getElementById('messages').innerHTML =
-                `<div class="ui error message"><p>${response.message}</p></div>`;
-            // Автоматически убрать AJAX-сообщение через 5 секунды
-            setTimeout(() => {
-                document.getElementById('messages').innerHTML = '';
-            }, 5000);
+            showMessage(response.message, 'error');
         }
-    });
+    }
 
-    // Обновление задачи
-    document.addEventListener('submit', async function(e) {
-        if (e.target.matches('.update-task-form')) {
+    // Функция для обновления статуса задачи
+    async function updateTaskStatus(taskId, newStatus) {
+        const currentStatusElement = document.querySelector(`div[data-task-id="${taskId}"] span.ui.label`);
+        const currentStatus = currentStatusElement.textContent.trim() === 'Не начато' ? 0 :
+                             currentStatusElement.textContent.trim() === 'В процессе' ? 1 : 2;
+
+        const change = newStatus - currentStatus;
+        const data = JSON.stringify({ change: change });
+        const response = await sendRequest(`/api/v1/tasks/${taskId}/`, 'PATCH', data);
+
+        if (response.success) {
+            const taskElement = document.querySelector(`div[data-task-id="${taskId}"]`);
+            taskElement.outerHTML = renderTask(response.data);
+            showMessage(response.message);
+        } else {
+            showMessage(response.message, 'error');
+        }
+    }
+
+    // Функция для удаления задачи
+    async function deleteTask(taskId) {
+        const response = await sendRequest(`/api/v1/tasks/${taskId}/`, 'DELETE');
+
+        if (response.success) {
+            document.querySelector(`div[data-task-id="${taskId}"]`).remove();
+            showMessage(response.message);
+        } else {
+            showMessage(response.message, 'error');
+        }
+    }
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTasks();
+
+        document.getElementById('add-task-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const form = e.target;
-            const taskId = form.dataset.taskId;
-
-            console.log('Обновление задачи ID:', taskId, 'URL:', "{% url 'update' 0 %}".replace('0', taskId));
-            const formData = serializeForm(form);
-            const response = await sendRequest("{% url 'update' 0 %}".replace('0', taskId), formData);
-
-            if (response.success) {
-                document.querySelector(`div[data-task-id="${taskId}"]`).outerHTML = response.task_html;
-                document.getElementById('messages').innerHTML =
-                    `<div class="ui success message"><p>${response.message}</p></div>`;
-                // Обновляем CSRF-токен во всех формах внутри #task-list
-                document.querySelectorAll('#task-list input[name="csrfmiddlewaretoken"]').forEach(input => {
-                    input.value = response.csrf_token;
-                });
-                // Автоматически убрать AJAX-сообщение через 5 секунды
-                setTimeout(() => {
-                    document.getElementById('messages').innerHTML = '';
-                }, 5000);
-            } else {
-                document.getElementById('messages').innerHTML =
-                    `<div class="ui error message"><p>${response.message}</p></div>`;
-                // Автоматически убрать AJAX-сообщение через 3 секунды
-                setTimeout(() => {
-                    document.getElementById('messages').innerHTML = '';
-                }, 5000);
-            }
-        }
-    });
-
-    // Удаление задачи
-    document.addEventListener('submit', async function(e) {
-        if (e.target.matches('.delete-task-form')) {
-            e.preventDefault();
-            const form = e.target;
-            const taskId = form.dataset.taskId;
-
-            console.log('Удаление задачи ID:', taskId, 'URL:', "{% url 'delete' 0 %}".replace('0', taskId));
-            const formData = serializeForm(form);
-            const response = await sendRequest("{% url 'delete' 0 %}".replace('0', taskId), formData);
-
-            if (response.success) {
-                document.querySelector(`div[data-task-id="${taskId}"]`).remove();
-                document.getElementById('messages').innerHTML =
-                    `<div class="ui success message"><p>${response.message}</p></div>`;
-                // Обновляем CSRF-токен во всех формах внутри #task-list
-                document.querySelectorAll('#task-list input[name="csrfmiddlewaretoken"]').forEach(input => {
-                    input.value = response.csrf_token;
-                });
-                // Автоматически убрать AJAX-сообщение через 5 секунды
-                setTimeout(() => {
-                    document.getElementById('messages').innerHTML = '';
-                }, 5000);
-            } else {
-                document.getElementById('messages').innerHTML =
-                    `<div class="ui error message"><p>${response.message}</p></div>`;
-                // Автоматически убрать AJAX-сообщение через 5 секунды
-                setTimeout(() => {
-                    document.getElementById('messages').innerHTML = '';
-                }, 5000);
-            }
-        }
+            const name = this.querySelector('input[name="name"]').value.trim();
+            addTask(name);
+        });
     });
 </script>
 {% endblock %}
