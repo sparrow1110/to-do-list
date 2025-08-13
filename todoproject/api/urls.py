@@ -3,6 +3,6 @@ from . import views
 
 
 urlpatterns = [
-    path("api/v1/tasks/<int:task_id>/", views.TaskAPIView.as_view()),
-    path("api/v1/tasks/", views.TaskAPIView.as_view()),
+    path("api/v1/tasks/<int:pk>/", views.TaskRetrieveUpdateDestroyAPIView.as_view()),
+    path("api/v1/tasks/", views.TaskListCreateAPIView.as_view()),
 ]

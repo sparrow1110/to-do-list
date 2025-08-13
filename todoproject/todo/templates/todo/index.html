@@ -130,6 +130,7 @@
 
     // Функция для добавления задачи
     async function addTask(name) {
+        const taskInput = document.getElementById('task-name');
         const data = JSON.stringify({ name: name });
         const response = await sendRequest('/api/v1/tasks/', 'POST', data);
 
@@ -140,6 +141,7 @@
             document.getElementById('add-task-form').reset();
         } else {
             showMessage(response.message, 'error');
+            taskInput.value = '';
         }
     }
 

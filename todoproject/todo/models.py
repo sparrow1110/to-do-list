@@ -8,7 +8,7 @@ class Task(models.Model):
         IN_PROCESS = 1, 'В процессе'
         FINISHED = 2, 'Завершено'
 
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, blank=True)
     is_completed = models.IntegerField(choices=Status.choices, default=Status.NOT_STARTED)
     user = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, default=None, related_name="tasks")
 
